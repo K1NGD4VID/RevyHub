@@ -221,7 +221,7 @@ Display the active Freighter network and warn users when it does not match the s
 
 ### Maintainer Status
 
-Completed with wallet network display and app-vs-wallet mismatch warning.
+Completed with wallet network display, app-vs-wallet mismatch warning, normalized network labels (Testnet/Mainnet), and match/mismatch badge indicators.
 
 ### Acceptance Criteria
 

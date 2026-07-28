@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { CharacterPanel } from "@/components/ui/CharacterPanel";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { useNetwork } from "@/components/stellar/NetworkProvider";
@@ -27,6 +29,16 @@ function normalizeFreighterNetwork(value: string) {
   return "unknown";
 }
 
+function displayNetwork(value: string) {
+  const kind = normalizeFreighterNetwork(value);
+  if (kind === "testnet") return "Testnet";
+  if (kind === "mainnet") return "Mainnet";
+  return value || "Unknown";
+}
+
+// TODO(issue #8): Add Freighter network change listener so the display
+// updates without requiring a reconnect or page reload.
+
 export default function FreighterConnectPage() {
   const { network } = useNetwork();
   const [available, setAvailable] = useState(false);
@@ -35,8 +47,14 @@ export default function FreighterConnectPage() {
   const [walletNetwork, setWalletNetwork] = useState("");
   const [message, setMessage] = useState({ type: "info" as "info" | "success" | "warning" | "error", text: "The wallet mascot is listening for Freighter in this browser." });
   const walletNetworkKind = walletNetwork ? normalizeFreighterNetwork(walletNetwork) : "";
+  const displayWalletNetwork = walletNetwork ? displayNetwork(walletNetwork) : "";
   const networkMismatch =
     walletNetworkKind !== "" && walletNetworkKind !== "unknown" && walletNetworkKind !== network;
+  const networkStatus = useMemo(() => {
+    if (!walletNetwork) return "unknown";
+    if (walletNetworkKind === "unknown") return "unknown";
+    return networkMismatch ? "mismatch" : "match";
+  }, [walletNetwork, walletNetworkKind, networkMismatch]);
 
   useEffect(() => {
     let active = true;
@@ -131,7 +149,14 @@ export default function FreighterConnectPage() {
           </div>
           <div className="rounded-lg border border-white/80 bg-white/60 p-4">
             <p className="text-xs font-extrabold uppercase tracking-wide text-[#9a6754]">Wallet network</p>
-            <p className="mt-2 text-sm text-[#29364d]">{walletNetwork || "Unknown"}</p>
+            <p className="mt-2 flex items-center gap-2 text-sm text-[#29364d]">
+              {displayWalletNetwork || "Unknown"}
+              {networkStatus === "match" ? (
+                <Badge tone="success">Match</Badge>
+              ) : networkStatus === "mismatch" ? (
+                <Badge tone="warning">Mismatch</Badge>
+              ) : null}
+            </p>
           </div>
         </div>
         <a
@@ -146,19 +171,15 @@ export default function FreighterConnectPage() {
         <StatusMessage
           type="warning"
           title="Network mismatch"
-          description={`The app is set to ${network}, but Freighter reports ${walletNetwork}. Switch one of them before testing wallet-driven workflows.`}
+          description={`The app is set to ${network}, but Freighter reports ${displayWalletNetwork}. Switch Freighter to ${network === "testnet" ? "Testnet" : "Mainnet"} or change the app network in the header before testing wallet-driven workflows.`}
         />
-      ) : (
+      ) : available && walletNetwork ? (
         <StatusMessage
           type="info"
           title="Network check"
-          description={
-            walletNetwork
-              ? `The app network is ${network}; Freighter reports ${walletNetwork}.`
-              : "Freighter network will appear here when the extension exposes it."
-          }
+          description={`The app network is ${network}; Freighter reports ${displayWalletNetwork}. They match — wallet-driven workflows should work.`}
         />
-      )}
+      ) : null}
     </div>
   );
 }
